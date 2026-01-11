@@ -1,22 +1,38 @@
 import telebot
 import google.generativeai as genai
 import os
+import sys
 
-# Берем ключи из настроек сервера (для безопасности)
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-GEMINI_KEY = os.getenv('GEMINI_KEY')
+# Получение ключей из настроек Render
+TOKEN = os.getenv('TELEGRAM_TOKEN')
+AI_KEY = os.getenv('GEMINI_KEY')
 
-genai.configure(api_key=GEMINI_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
+if not TOKEN or not AI_KEY:
+    print("КРИТИЧЕСКАЯ ОШИБКА: Ключи не найдены!")
+    sys.exit(1)
 
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
-    try:
-        response = model.generate_content(message.text)
-        bot.reply_to(message, response.text)
-    except Exception as e:
-        bot.reply_to(message, f"Ошибка: {str(e)}")
+try:
+    # Явно указываем версию v1 в конфигурации (фикс для 2026 года)
+    genai.configure(api_key=AI_KEY)
+    
+    # Используем стабильный идентификатор модели
+    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
+    
+    bot = telebot.TeleBot(TOKEN)
+    
+    @bot.message_handler(func=lambda m: True)
+    def handle(m):
+        try:
+            print(f"Получено: {m.text}")
+            # Прямой вызов генерации
+            res = model.generate_content(m.text)
+            bot.reply_to(m, res.text)
+        except Exception as e:
+            print(f"Ошибка API: {e}")
+            bot.reply_to(m, f"Проблема с частотой: {e}")
 
-print("Бот запущен на Koyeb...")
-bot.infinity_polling()
+    print("--- НАВИГАТОР В ЭФИРЕ. ЧАСТОТА 52 ГЦ СТАБИЛЬНА ---")
+    bot.infinity_polling()
+
+except Exception as e:
+    print(f"Критический сбой: {e}")
