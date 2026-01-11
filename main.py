@@ -3,36 +3,41 @@ import google.generativeai as genai
 import os
 import sys
 
-# Получение ключей из настроек Render
+# Получение ключей из переменных окружения Render
 TOKEN = os.getenv('TELEGRAM_TOKEN')
 AI_KEY = os.getenv('GEMINI_KEY')
 
 if not TOKEN or not AI_KEY:
-    print("КРИТИЧЕСКАЯ ОШИБКА: Ключи не найдены!")
+    print("ОШИБКА: Проверь TELEGRAM_TOKEN и GEMINI_KEY в настройках Render!")
     sys.exit(1)
 
 try:
-    # Явно указываем версию v1 в конфигурации (фикс для 2026 года)
+    # Инициализация с актуальной моделью 2026 года
     genai.configure(api_key=AI_KEY)
     
-    # Используем стабильный идентификатор модели
-    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
+    # Меняем 1.5-flash (404) на 2.0-flash
+    model = genai.GenerativeModel('gemini-2.0-flash')
     
     bot = telebot.TeleBot(TOKEN)
     
     @bot.message_handler(func=lambda m: True)
     def handle(m):
         try:
-            print(f"Получено: {m.text}")
-            # Прямой вызов генерации
+            print(f"Вход: {m.text}")
             res = model.generate_content(m.text)
-            bot.reply_to(m, res.text)
+            
+            # Проверка, что ответ не пустой
+            if res.text:
+                bot.reply_to(m, res.text)
+            else:
+                bot.reply_to(m, "ИИ промолчал. Попробуй другой запрос.")
+                
         except Exception as e:
-            print(f"Ошибка API: {e}")
-            bot.reply_to(m, f"Проблема с частотой: {e}")
+            print(f"Ошибка при генерации: {e}")
+            bot.reply_to(m, f"Ошибка API: Скорее всего, модель недоступна. {e}")
 
-    print("--- НАВИГАТОР В ЭФИРЕ. ЧАСТОТА 52 ГЦ СТАБИЛЬНА ---")
+    print("--- БОТ ЗАПУЩЕН НА МОДЕЛИ 2.0-FLASH ---")
     bot.infinity_polling()
 
 except Exception as e:
-    print(f"Критический сбой: {e}")
+    print(f"Критическая ошибка запуска: {e}")
