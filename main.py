@@ -1,46 +1,60 @@
 import telebot
 import google.generativeai as genai
-import os
+import sys
 
-# ТВОИ ДАННЫЕ
+# ==========================================
+# ВСТАВЬ СВОИ ДАННЫЕ СЮДА:
+# ==========================================
 TOKEN = '8576768180:AAEVylK96kRJgeesXBtcL0xUDd2-Gk54YZ4'
 AI_KEY = 'AIzaSyAY4_hmshJr8gHvcZlmL9D_vvE_gbzJk20'
+# ==========================================
 
-# Настройка: транспорт 'rest' — это лекарство от 404 на облачных хостингах
-genai.configure(api_key=AI_KEY, transport='rest')
+# Простая проверка, чтобы ты не забыл вставить ключи
+if 'ТВОЙ_' in TOKEN or 'ТВОЙ_' in AI_KEY:
+    print("КРИТИЧЕСКАЯ ОШИБКА: Ты не заменил шаблонные ключи на свои реальные данные!")
+    sys.exit(1)
 
-# В 2026 году пробуем версию 'flash-latest'
-model = genai.GenerativeModel('gemini-1.5-flash-latest')
+try:
+    # Настройка Google Gemini (фикс 404 через transport='rest')
+    genai.configure(api_key=AI_KEY, transport='rest')
+    # Самая стабильная модель на начало 2026 года
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    
+    # Инициализация бота
+    bot = telebot.TeleBot(TOKEN)
 
-bot = telebot.TeleBot(TOKEN)
-
-@bot.message_handler(func=lambda m: True)
-def handle(m):
-    try:
-        print(f"Принято сообщение: {m.text}")
-        res = model.generate_content(m.text)
-        
-        if res.text:
-            bot.reply_to(m, res.text)
-        else:
-            bot.reply_to(m, "ИИ вернул пустой ответ.")
+    # Обработчик всех текстовых сообщений
+    @bot.message_handler(func=lambda m: True)
+    def handle_message(m):
+        try:
+            print(f"Принял запрос: {m.text}")
             
-    except Exception as e:
-        error_msg = str(e)
-        print(f"ЛОГ ОШИБКИ: {error_msg}")
-        
-        if "404" in error_msg:
-            # Если опять 404, выводим список доступных моделей прямо в консоль Render
-            print("--- ДОСТУПНЫЕ ТЕБЕ МОДЕЛИ: ---")
-            try:
-                for m_info in genai.list_models():
-                    print(m_info.name)
-            except:
-                print("Не удалось получить список моделей.")
+            # Генерация ответа через ИИ
+            response = model.generate_content(m.text)
             
-            bot.reply_to(m, "❌ Ошибка 404. Я вывел список доступных моделей в логи Render. Посмотри их там.")
-        else:
-            bot.reply_to(m, f"Проблема: {error_msg}")
+            if response and response.text:
+                bot.reply_to(m, response.text)
+            else:
+                bot.reply_to(m, "ИИ не смог сформировать текст ответа.")
+                
+        except Exception as e:
+            error_str = str(e)
+            print(f"Ошибка при обработке: {error_str}")
+            
+            if "429" in error_str:
+                bot.reply_to(m, "❌ Ошибка квот: у Google закончились бесплатные запросы. Попробуй позже.")
+            elif "401" in error_str:
+                bot.reply_to(m, "❌ Ошибка авторизации: проверь токен Телеграм!")
+            else:
+                bot.reply_to(m, f"Произошла ошибка: {error_str}")
 
-print("--- БОТ ВКЛЮЧЕН. ЕСЛИ БУДЕТ 404 — СМОТРИ ЛОГИ RENDER ---")
-bot.infinity_polling()
+    # Фикс ошибки 409: удаляем старые соединения и пропускаем накопившиеся сообщения
+    print("--- БОТ ЗАПУСКАЕТСЯ... ---")
+    bot.remove_webhook()
+    
+    # skip_pending=True игнорирует сообщения, присланные пока бот был выключен
+    print("--- СИСТЕМА В ЭФИРЕ ---")
+    bot.infinity_polling(skip_pending=True)
+
+except Exception as e:
+    print(f"Критический сбой при старте: {e}")
