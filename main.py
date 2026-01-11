@@ -1,34 +1,36 @@
 import telebot
 import google.generativeai as genai
 import os
-import time
+import sys
 
-# ВСТАВЬ СЮДА НОВЫЙ КЛЮЧ И ТОКЕН
+# ВСТАВЬ СВОИ ДАННЫЕ СЮДА
 TOKEN = '8576768180:AAGkqbo8V6XxsogC54W-dgIQG1JHdwSdqy0'
-AI_KEY = 'AIzaSyBH6Sz4sqWwLhqGa1MC2GhuCg5UzuFKPZY'
+AI_KEY = 'AIzaSyAY4_hmshJr8gHvcZlmL9D_vvE_gbzJk20'
 
-genai.configure(api_key=AI_KEY)
-bot = telebot.TeleBot(TOKEN)
+try:
+    genai.configure(api_key=AI_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    bot = telebot.TeleBot(TOKEN)
 
-# Список моделей для перебора
-MODELS = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash']
-
-@bot.message_handler(func=lambda m: True)
-def handle(m):
-    success = False
-    for model_name in MODELS:
+    @bot.message_handler(func=lambda m: True)
+    def handle(m):
         try:
-            model = genai.GenerativeModel(model_name)
+            print(f"Принято: {m.text}")
             res = model.generate_content(m.text)
-            bot.reply_to(m, res.text)
-            success = True
-            break # Если получилось, выходим из цикла
+            
+            if res.text:
+                bot.reply_to(m, res.text)
+            else:
+                bot.reply_to(m, "ИИ ничего не ответил.")
         except Exception as e:
-            print(f"Модель {model_name} не сработала: {e}")
-            continue
+            print(f"Ошибка в handle: {e}")
+            if "429" in str(e):
+                bot.reply_to(m, "❌ Ошибка 429: Лимит всё еще 0. Google блокирует запросы от Render.")
+            else:
+                bot.reply_to(m, f"Ошибка: {e}")
 
-    if not success:
-        bot.reply_to(m, "❌ Все модели Google отказали. Твой ключ заблокирован (Лимит: 0). Создай НОВЫЙ ключ под VPN на другом аккаунте.")
+    print("--- БОТ ЗАПУЩЕН И ЖДЕТ СООБЩЕНИЙ ---")
+    bot.infinity_polling()
 
-print("Бот запущен. Если в Телеге тишина — смотри логи Render.")
-bot.infinity_polling()
+except Exception as e:
+    print(f"Ошибка запуска: {e}")
