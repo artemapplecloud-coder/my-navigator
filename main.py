@@ -3,7 +3,7 @@ import google.generativeai as genai
 import os
 
 # ТВОИ ДАННЫЕ
-TOKEN = '8576768180:AAGkqbo8V6XxsogC54W-dgIQG1JHdwSdqy0'
+TOKEN = '8576768180:AAEVylK96kRJgeesXBtcL0xUDd2-Gk54YZ4'
 AI_KEY = 'AIzaSyAY4_hmshJr8gHvcZlmL9D_vvE_gbzJk20'
 
 # Настройка: транспорт 'rest' — это лекарство от 404 на облачных хостингах
