@@ -1,57 +1,63 @@
 import telebot
-import google.generativeai as genai
+import requests
 import time
 import sys
 
-# ТВОИ КЛЮЧИ
+# ТВОИ КЛЮЧИ (ВСТАВЛЕНЫ)
 TOKEN = '8576768180:AAEVylK96kRJgeesXBtcL0xUDd2-Gk54YZ4'
 AI_KEY = 'AIzaSyAY4_hmshJr8gHvcZlmL9D_vvE_gbzJk20'
 
-def start_bot():
+bot = telebot.TeleBot(TOKEN)
+
+def get_ai_response(text):
+    # ПРИНУДИТЕЛЬНО используем стабильный адрес v1, где нет ошибки 404
+    url = f"generativelanguage.googleapis.com{AI_KEY}"
+    
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "contents": [
+            {
+                "parts": [{"text": text}]
+            }
+        ]
+    }
+
     try:
-        # ФИКС 404: Настраиваем транспорт на 'rest' в самом начале. 
-        # Это заставляет библиотеку использовать стабильные пути v1.
-        genai.configure(api_key=AI_KEY, transport='rest')
+        response = requests.post(url, json=payload, headers=headers)
+        res_json = response.json()
         
-        # Используем модель gemini-1.5-flash
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        bot = telebot.TeleBot(TOKEN)
+        # Вытаскиваем текст из ответа Google
+        if 'candidates' in res_json:
+            return res_json['candidates'][0]['content']['parts'][0]['text']
+        else:
+            error_msg = res_json.get('error', {}).get('message', 'Неизвестная ошибка')
+            return f"Ошибка Google: {error_msg}"
+    except Exception as e:
+        return f"Ошибка связи: {str(e)}"
 
-        @bot.message_handler(func=lambda m: True)
-        def handle(m):
-            try:
-                print(f"Запрос ИИ: {m.text}")
-                
-                # Обычный вызов без лишних наворотов, так как транспорт уже настроен
-                response = model.generate_content(m.text)
-                
-                if response.text:
-                    bot.reply_to(m, response.text)
-                else:
-                    bot.reply_to(m, "ИИ не выдал текста.")
-                    
-            except Exception as e:
-                err = str(e)
-                print(f"Ошибка ИИ: {err}")
-                bot.reply_to(m, f"Ошибка от Google: {err[:150]}")
+@bot.message_handler(func=lambda m: True)
+def handle_message(m):
+    try:
+        print(f"Запрос в ИИ: {m.text}")
+        answer = get_ai_response(m.text)
+        bot.reply_to(m, answer)
+    except Exception as e:
+        print(f"Ошибка бота: {e}")
 
-        # Фикс конфликта 409
-        print("Чистим сессии...")
+def run_bot():
+    try:
+        print("Сброс старых сессий...")
         bot.delete_webhook()
-        time.sleep(2) 
-        
-        print("--- БОТ В ЭФИРЕ ---")
+        time.sleep(2)
+        print("--- БОТ ЗАПУЩЕН ЧЕРЕЗ ПРЯМОЙ ДОСТУП V1 ---")
         bot.infinity_polling(skip_pending=True)
-
     except Exception as e:
         if "409" in str(e):
             print("Конфликт 409. Ждем...")
             time.sleep(10)
-            return start_bot()
+            run_bot()
         else:
-            print(f"Критический сбой: {e}")
-            sys.exit(1)
+            print(f"Сбой: {e}")
 
 if __name__ == "__main__":
-    start_bot()
+    run_bot()
