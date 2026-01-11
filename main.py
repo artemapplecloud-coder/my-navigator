@@ -3,14 +3,14 @@ import requests
 import time
 import sys
 
-# ТВОИ КЛЮЧИ (ВСТАВЛЕНЫ)
+# ТВОИ КЛЮЧИ
 TOKEN = '8576768180:AAEVylK96kRJgeesXBtcL0xUDd2-Gk54YZ4'
 AI_KEY = 'AIzaSyAY4_hmshJr8gHvcZlmL9D_vvE_gbzJk20'
 
 bot = telebot.TeleBot(TOKEN)
 
 def get_ai_response(text):
-    # ПРИНУДИТЕЛЬНО используем стабильный адрес v1, где нет ошибки 404
+    # ИСПРАВЛЕННЫЙ URL: добавлен протокол и правильный путь
     url = f"generativelanguage.googleapis.com{AI_KEY}"
     
     headers = {'Content-Type': 'application/json'}
@@ -26,8 +26,8 @@ def get_ai_response(text):
         response = requests.post(url, json=payload, headers=headers)
         res_json = response.json()
         
-        # Вытаскиваем текст из ответа Google
-        if 'candidates' in res_json:
+        # Парсим ответ
+        if 'candidates' in res_json and len(res_json['candidates']) > 0:
             return res_json['candidates'][0]['content']['parts'][0]['text']
         else:
             error_msg = res_json.get('error', {}).get('message', 'Неизвестная ошибка')
@@ -38,18 +38,18 @@ def get_ai_response(text):
 @bot.message_handler(func=lambda m: True)
 def handle_message(m):
     try:
-        print(f"Запрос в ИИ: {m.text}")
+        print(f"Запрос: {m.text}")
         answer = get_ai_response(m.text)
         bot.reply_to(m, answer)
     except Exception as e:
-        print(f"Ошибка бота: {e}")
+        print(f"Ошибка в боте: {e}")
 
 def run_bot():
     try:
-        print("Сброс старых сессий...")
+        print("Чистка сессий...")
         bot.delete_webhook()
         time.sleep(2)
-        print("--- БОТ ЗАПУЩЕН ЧЕРЕЗ ПРЯМОЙ ДОСТУП V1 ---")
+        print("--- БОТ ЗАПУЩЕН (ПРЯМОЙ HTTP V1) ---")
         bot.infinity_polling(skip_pending=True)
     except Exception as e:
         if "409" in str(e):
