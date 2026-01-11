@@ -1,43 +1,34 @@
 import telebot
 import google.generativeai as genai
 import os
-import sys
+import time
 
-# Получение ключей из переменных окружения Render
-TOKEN = os.getenv('8576768180:AAGkqbo8V6XxsogC54W-dgIQG1JHdwSdqy0')
-AI_KEY = os.getenv('AIzaSyDeoUa39KMZCLnaXITvUZTORBCAjbsZjms')
+# ВСТАВЬ СЮДА НОВЫЙ КЛЮЧ И ТОКЕН
+TOKEN = '8576768180:AAGkqbo8V6XxsogC54W-dgIQG1JHdwSdqy0'
+AI_KEY = 'AIzaSyBH6Sz4sqWwLhqGa1MC2GhuCg5UzuFKPZY'
 
-if not TOKEN or not AI_KEY:
-    print("ОШИБКА: Проверь TELEGRAM_TOKEN и GEMINI_KEY в настройках Render!")
-    sys.exit(1)
+genai.configure(api_key=AI_KEY)
+bot = telebot.TeleBot(TOKEN)
 
-try:
-    # Инициализация с актуальной моделью 2026 года
-    genai.configure(api_key=AI_KEY)
-    
-    # Меняем 1.5-flash (404) на 2.0-flash
-    model = genai.GenerativeModel('gemini-2.0-flash')
-    
-    bot = telebot.TeleBot(TOKEN)
-    
-    @bot.message_handler(func=lambda m: True)
-    def handle(m):
+# Список моделей для перебора
+MODELS = ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash']
+
+@bot.message_handler(func=lambda m: True)
+def handle(m):
+    success = False
+    for model_name in MODELS:
         try:
-            print(f"Вход: {m.text}")
+            model = genai.GenerativeModel(model_name)
             res = model.generate_content(m.text)
-            
-            # Проверка, что ответ не пустой
-            if res.text:
-                bot.reply_to(m, res.text)
-            else:
-                bot.reply_to(m, "ИИ промолчал. Попробуй другой запрос.")
-                
+            bot.reply_to(m, res.text)
+            success = True
+            break # Если получилось, выходим из цикла
         except Exception as e:
-            print(f"Ошибка при генерации: {e}")
-            bot.reply_to(m, f"Ошибка API: Скорее всего, модель недоступна. {e}")
+            print(f"Модель {model_name} не сработала: {e}")
+            continue
 
-    print("--- БОТ ЗАПУЩЕН НА МОДЕЛИ 2.0-FLASH ---")
-    bot.infinity_polling()
+    if not success:
+        bot.reply_to(m, "❌ Все модели Google отказали. Твой ключ заблокирован (Лимит: 0). Создай НОВЫЙ ключ под VPN на другом аккаунте.")
 
-except Exception as e:
-    print(f"Критическая ошибка запуска: {e}")
+print("Бот запущен. Если в Телеге тишина — смотри логи Render.")
+bot.infinity_polling()
