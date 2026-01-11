@@ -4,8 +4,8 @@ import os
 import sys
 
 # Получение ключей из переменных окружения Render
-TOKEN = os.getenv('TELEGRAM_TOKEN')
-AI_KEY = os.getenv('GEMINI_KEY')
+TOKEN = os.getenv('8576768180:AAGkqbo8V6XxsogC54W-dgIQG1JHdwSdqy0')
+AI_KEY = os.getenv('AIzaSyDeoUa39KMZCLnaXITvUZTORBCAjbsZjms')
 
 if not TOKEN or not AI_KEY:
     print("ОШИБКА: Проверь TELEGRAM_TOKEN и GEMINI_KEY в настройках Render!")
